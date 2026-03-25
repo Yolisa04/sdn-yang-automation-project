@@ -1,0 +1,4 @@
+As all the machines started GNS, routers and opendaylight
+
+Start the app.py file to connect on the router
+Then run the temple html index fill thats when it will interact and show the route info and odl if its on or off

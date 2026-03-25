@@ -1,0 +1,105 @@
+module cisco-iosxr-config {
+  namespace "urn:cisco:iosxr:config";
+  prefix iosxr;
+
+  organization "Cisco Systems";
+  contact "netconf@cisco.com";
+
+  description
+    "YANG model for Cisco IOS XR NETCONF configuration management.
+     Supports interface configuration, OSPF routing, and system info retrieval.";
+
+  revision "2025-01-20" {
+    description "Initial revision for dual-router configuration tool.";
+  }
+
+  container interfaces {
+    description "Interface configuration container";
+    list interface {
+      key "name";
+      description "List of interfaces";
+
+      leaf name {
+        type string;
+        description "Interface name (e.g., GigabitEthernet0/0/0/0)";
+      }
+
+      leaf description {
+        type string;
+        description "Interface description";
+      }
+
+      container ipv4 {
+        description "IPv4 configuration";
+        container addresses {
+          description "IPv4 address container";
+          leaf primary-address {
+            type string;
+            description "Primary IPv4 address";
+          }
+          leaf netmask {
+            type string;
+            description "Subnet mask in dotted decimal format";
+          }
+        }
+      }
+    }
+  }
+
+  container ospf {
+    description "OSPF routing configuration";
+    list process {
+      key "process-id";
+      description "OSPF process list";
+
+      leaf process-id {
+        type string;
+        description "OSPF process identifier";
+      }
+
+      leaf area-id {
+        type string;
+        description "OSPF area identifier";
+      }
+
+      list interfaces {
+        key "name";
+        description "Interfaces in OSPF process";
+
+        leaf name {
+          type string;
+          description "Interface name";
+        }
+      }
+    }
+  }
+
+  container system {
+    description "System information (read-only)";
+    config false;
+
+    list user {
+      description "Local user accounts";
+      leaf username {
+        type string;
+        description "Username";
+      }
+      leaf group {
+        type string;
+        description "User group";
+      }
+    }
+
+    list policy {
+      description "Route policies";
+      leaf name {
+        type string;
+        description "Policy name";
+      }
+      leaf definition {
+        type string;
+        description "Policy definition";
+      }
+    }
+  }
+}

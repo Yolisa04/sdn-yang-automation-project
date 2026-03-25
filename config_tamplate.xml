@@ -1,0 +1,50 @@
+xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cisco IOS XR NETCONF Configuration Template -->
+<!-- This template is populated dynamically by the Python script -->
+
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+
+  <!-- Interface Configuration Template -->
+  <interface-configurations xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ifmgr-cfg">
+    <interface-configuration>
+      <active>act</active>
+      <interface-name>PLACEHOLDER_IFACE</interface-name>
+      <description>PLACEHOLDER_DESC</description>
+      <ipv4-network xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-io-cfg">
+        <addresses>
+          <primary>
+            <address>PLACEHOLDER_IP</address>
+            <netmask>PLACEHOLDER_MASK</netmask>
+          </primary>
+        </addresses>
+      </ipv4-network>
+    </interface-configuration>
+  </interface-configurations>
+
+  <!-- OSPF Configuration Template -->
+  <ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ipv4-ospf-cfg">
+    <processes>
+      <process>
+        <process-name>PLACEHOLDER_PROCESS_ID</process-name>
+        <default-vrf>
+          <area-addresses>
+            <area-area-id>
+              <area-id>PLACEHOLDER_AREA_ID</area-id>
+              <running/>
+              <name-scopes>
+                <name-scope>
+                  <interface-name>PLACEHOLDER_OSPF_IFACE</interface-name>
+                  <running/>
+                </name-scope>
+              </name-scopes>
+            </area-area-id>
+          </area-addresses>
+        </default-vrf>
+        <start/>
+      </process>
+    </processes>
+  </ospf>
+
+</config>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDN Network Configuration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .tab-content { 
+      display: none !important; 
+    }
+    .tab-content.active { 
+      display: block !important; 
+    }
+    .status-message { 
+      animation: slideIn 0.3s ease-in-out; 
+    }
+    @keyframes slideIn { 
+      from { opacity: 0; transform: translateY(-10px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white min-h-screen">
+
+<div class="max-w-7xl mx-auto">
+  <!-- Header -->
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-2">
+      <i class="fas fa-network-wired w-8 h-8 text-blue-400"></i>
+      <h1 class="text-4xl font-bold text-white">SDN Network Configuration</h1>
+    </div>
+    <p class="text-slate-400">YANG-Based Device Programming with RESTCONF</p>
+  </div>
+
+  <!-- Status Messages -->
+  <div id="statusContainer" class="mb-6"></div>
+
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6 border-b border-slate-700 overflow-x-auto">
+    <button class="tab-btn px-4 py-3 font-medium transition-colors whitespace-nowrap text-blue-400 border-b-2 border-blue-400 active" data-tab="topology">
+      <i class="fas fa-project-diagram mr-2"></i>Topology
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium transition-colors whitespace-nowrap text-slate-400 hover:text-slate-300" data-tab="configuration">
+      <i class="fas fa-cogs mr-2"></i>Configuration
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium transition-colors whitespace-nowrap text-slate-400 hover:text-slate-300" data-tab="yang">
+      <i class="fas fa-code mr-2"></i>YANG
+    </button>
+    <button class="tab-btn px-4 py-3 font-medium transition-colors whitespace-nowrap text-slate-400 hover:text-slate-300" data-tab="restconf">
+      <i class="fas fa-cube mr-2"></i>RESTCONF
+    </button>
+  </div>
+
+  <!-- Tab Contents -->
+  
+  <!-- TOPOLOGY TAB -->
+  <div class="tab-content active" data-tab="topology">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <i class="fas fa-network-wired text-blue-400"></i>Network Topology
+        </h2>
+        <div class="space-y-8">
+          <!-- Routers & ODL -->
+          <div class="flex justify-between items-center px-4 flex-wrap gap-4">
+            {% for device in devices %}
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-28 h-20 rounded-lg flex items-center justify-center text-white font-bold shadow-lg
+                  {% if device.id == 'ODL' %}
+                    bg-gradient-to-br from-orange-500 to-orange-700
+                  {% else %}
+                    bg-gradient-to-br from-teal-500 to-teal-700
+                  {% endif %}">
+                  {{ device.name }}
+                </div>
+                <div class="text-xs text-slate-300">{{ device.ip }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Status -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-white mb-4">Device Status</h3>
+        {% for device in devices %}
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium text-white">{{ device.name }}</span>
+              <div class="w-3 h-3 rounded-full {% if device.status == 'connected' or device.status == 'active' %}bg-green-500{% else %}bg-red-500{% endif %}"></div>
+            </div>
+            <div class="text-sm text-slate-400">{{ device.ip }}</div>
+            <div class="text-xs text-slate-500 mt-1 capitalize">{{ device.status }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURATION TAB -->
+  <div class="tab-content" data-tab="configuration">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Router Selection -->
+      <div class="lg:col-span-1 space-y-4">
+        <h3 class="text-lg font-semibold text-white">Select Router</h3>
+        <button class="router-btn w-full p-4 rounded-lg font-medium transition-colors bg-blue-600 text-white" data-router="R1">
+          <i class="fas fa-network-wired mr-2"></i>Router 1
+        </button>
+        <button class="router-btn w-full p-4 rounded-lg font-medium transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600" data-router="R2">
+          <i class="fas fa-network-wired mr-2"></i>Router 2
+        </button>
+      </div>
+
+      <!-- Configuration Form -->
+      <div class="lg:col-span-2 bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <i class="fas fa-cogs text-blue-400"></i>Configuration for <span id="selectedRouterName">R1</span>
+        </h2>
+
+        <form id="configForm" class="space-y-4">
+          <!-- Hostname -->
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-300">Hostname</label>
+            <input type="text" id="hostname" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <!-- Interface & IP -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-300">Interface</label>
+              <input type="text" id="interface" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-300">IP Address</label>
+              <input type="text" id="ipAddress" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+
+          <!-- Netmask & Description -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-300">Netmask</label>
+              <input type="text" id="netmask" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-300">Description</label>
+              <input type="text" id="description" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+
+          <!-- OSPF Settings -->
+          <div class="border-t border-slate-600 pt-4 mt-4">
+            <div class="flex items-center gap-3 mb-3">
+              <input type="checkbox" id="ospfEnabled" class="w-4 h-4" />
+              <label class="text-sm font-medium text-slate-300">Enable OSPF</label>
+            </div>
+
+            <div id="ospfFields" class="hidden grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-300">Process ID</label>
+                <input type="number" id="ospfProcessId" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-300">Area ID</label>
+                <input type="number" id="ospfArea" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3 mt-6">
+            <button type="button" id="deployBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors">
+              <i class="fas fa-paper-plane"></i><span>Deploy Configuration</span>
+            </button>
+            <button type="button" id="syncBtn" class="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2 transition-colors">
+              <i class="fas fa-sync"></i><span>Sync</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- YANG TAB -->
+  <div class="tab-content" data-tab="yang">
+    <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-white mb-6">YANG Model Configuration</h2>
+      <div id="yangContent" class="bg-slate-900 rounded-lg p-4 font-mono text-sm text-green-400 overflow-x-auto max-h-96 overflow-y-auto">
+        <pre></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESTCONF TAB -->
+  <div class="tab-content" data-tab="restconf">
+    <div class="space-y-6">
+      <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-4">RESTCONF API Endpoint</h2>
+        <div id="restconfEndpoint" class="bg-slate-900 rounded-lg p-3 font-mono text-sm text-blue-400 overflow-x-auto break-all"></div>
+      </div>
+
+      <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-4">Payload (JSON)</h2>
+        <div id="restconfPayload" class="bg-slate-900 rounded-lg p-4 font-mono text-sm text-green-400 overflow-x-auto max-h-96 overflow-y-auto">
+          <pre></pre>
+        </div>
+      </div>
+
+      <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-4">cURL Command</h2>
+        <div id="restconfCurl" class="bg-slate-900 rounded-lg p-4 font-mono text-sm text-yellow-400 overflow-x-auto max-h-48 overflow-y-auto">
+          <pre></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const configsData = fetch('/api/config/R1').then(r => r.json());
+  let selectedRouter = 'R1';
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      
+      // Remove active styles from all buttons
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('text-blue-400', 'border-b-2', 'border-blue-400');
+        b.classList.add('text-slate-400');
+      });
+      
+      // Show selected tab
+      document.querySelector(`.tab-content[data-tab="${tab}"]`).classList.add('active');
+      
+      // Highlight selected button
+      btn.classList.add('text-blue-400', 'border-b-2', 'border-blue-400');
+      btn.classList.remove('text-slate-400');
+
+      if (tab === 'yang') loadYANG();
+      if (tab === 'restconf') loadRESTCONF();
+    });
+  });
+
+  // Router selection
+  document.querySelectorAll('.router-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedRouter = btn.getAttribute('data-router');
+      document.querySelectorAll('.router-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+      });
+      btn.classList.add('bg-blue-600', 'text-white');
+      btn.classList.remove('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+      
+      document.getElementById('selectedRouterName').textContent = selectedRouter;
+      loadConfig();
+    });
+  });
+
+  // Load configuration
+  async function loadConfig() {
+    try {
+      const response = await axios.get(`/api/config/${selectedRouter}`);
+      const config = response.data;
+      document.getElementById('hostname').value = config.hostname;
+      document.getElementById('interface').value = config.interface;
+      document.getElementById('ipAddress').value = config.ipAddress;
+      document.getElementById('netmask').value = config.netmask;
+      document.getElementById('description').value = config.description;
+      document.getElementById('ospfEnabled').checked = config.ospfEnabled;
+      document.getElementById('ospfProcessId').value = config.ospfProcessId;
+      document.getElementById('ospfArea').value = config.ospfArea;
+      updateOSPFFields();
+    } catch (error) {
+      showStatus('error', 'Failed to load configuration');
+    }
+  }
+
+  // Update OSPF fields visibility
+  document.getElementById('ospfEnabled').addEventListener('change', updateOSPFFields);
+  function updateOSPFFields() {
+    const ospfFields = document.getElementById('ospfFields');
+    ospfFields.classList.toggle('hidden', !document.getElementById('ospfEnabled').checked);
+  }
+
+  // Save field changes
+  document.querySelectorAll('input[type="text"], input[type="number"]').forEach(input => {
+    input.addEventListener('change', async () => {
+      const field = input.id;
+      const value = input.type === 'number' ? parseInt(input.value) : input.value;
+      try {
+        await axios.post('/api/update_config', { router: selectedRouter, field, value });
+      } catch (error) {
+        showStatus('error', 'Failed to update configuration');
+      }
+    });
+  });
+
+  document.getElementById('ospfEnabled').addEventListener('change', async () => {
+    try {
+      await axios.post('/api/update_config', { 
+        router: selectedRouter, 
+        field: 'ospfEnabled', 
+        value: document.getElementById('ospfEnabled').checked 
+      });
+    } catch (error) {
+      showStatus('error', 'Failed to update OSPF setting');
+    }
+  });
+
+  // Deploy configuration
+  document.getElementById('deployBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('deployBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Deploying...</span>';
+    
+    try {
+      const response = await axios.post(`/api/deploy/${selectedRouter}`);
+      showStatus('success', response.data.message);
+    } catch (error) {
+      showStatus('error', 'Failed to deploy configuration');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i><span>Deploy Configuration</span>';
+    }
+  });
+
+  // Sync configuration
+  document.getElementById('syncBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('syncBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Syncing...</span>';
+    
+    try {
+      const response = await axios.post(`/api/sync/${selectedRouter}`);
+      showStatus('success', response.data.message);
+    } catch (error) {
+      showStatus('error', 'Failed to sync configuration');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sync"></i><span>Sync</span>';
+    }
+  });
+
+  // Load YANG config
+  async function loadYANG() {
+    try {
+      const response = await axios.get(`/api/yang/${selectedRouter}`);
+      document.querySelector('[data-tab="yang"] pre').textContent = response.data.yang;
+    } catch (error) {
+      showStatus('error', 'Failed to load YANG configuration');
+    }
+  }
+
+  // Load RESTCONF config
+  async function loadRESTCONF() {
+    try {
+      const response = await axios.get(`/api/restconf/${selectedRouter}`);
+      document.getElementById('restconfEndpoint').textContent = response.data.endpoint;
+      document.querySelector('[data-tab="restconf"] pre').textContent = JSON.stringify(response.data.payload, null, 2);
+      
+      const curlResponse = await axios.get(`/api/curl/${selectedRouter}`);
+      document.querySelectorAll('[data-tab="restconf"] pre')[1].textContent = curlResponse.data.curl;
+    } catch (error) {
+      showStatus('error', 'Failed to load RESTCONF configuration');
+    }
+  }
+
+  // Show status message
+  function showStatus(type, message) {
+    const container = document.getElementById('statusContainer');
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `p-4 rounded-lg flex items-center gap-3 status-message ${
+      type === 'success' 
+        ? 'bg-green-900/30 border border-green-700 text-green-300' 
+        : 'bg-red-900/30 border border-red-700 text-red-300'
+    }`;
+    statusDiv.innerHTML = `
+      <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+      <span>${message}</span>
+    `;
+    container.innerHTML = '';
+    container.appendChild(statusDiv);
+    
+    setTimeout(() => statusDiv.remove(), 5000);
+  }
+
+  // Initial load
+  loadConfig();
+</script>
+
+</body>
+</html>
